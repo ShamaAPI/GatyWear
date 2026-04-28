@@ -1,0 +1,272 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  pending
+  processing
+  shipped
+  delivered
+  canceled
+}
+
+enum CouponType {
+  percentage
+  fixed
+}
+
+enum BannerTargetType {
+  product
+  category
+  url
+}
+
+enum AdminRole {
+  admin
+  staff
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String
+  slug        String    @unique
+  description String?   @db.Text
+  imageUrl    String?
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+  banners     HomeBanner[]
+}
+
+model Product {
+  id          Int       @id @default(autoincrement())
+  categoryId  Int
+  name        String
+  slug        String    @unique
+  description String    @db.Text
+  price       Decimal   @db.Decimal(10, 2)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  category      Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  images        ProductImage[]
+  variants      ProductVariant[]
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  couponLinks   CouponProduct[]
+  bannerTargets HomeBanner[]     @relation("BannerProductTarget")
+}
+
+model ProductImage {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  imageUrl  String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductVariant {
+  id          Int      @id @default(autoincrement())
+  productId   Int
+  color       String
+  size        String
+  sku         String?  @unique
+  stockQty    Int
+  reservedQty Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems CartItem[]
+  orderItems OrderItem[]
+
+  @@unique([productId, color, size])
+}
+
+model ShippingGovernorate {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  fee       Decimal  @db.Decimal(10, 2)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+}
+
+model HomeBanner {
+  id               Int              @id @default(autoincrement())
+  title            String?
+  subtitle         String?
+  buttonText       String?
+  imageUrlDesktop  String
+  imageUrlMobile   String?
+  targetType       BannerTargetType
+  targetProductId  Int?
+  targetCategoryId Int?
+  targetUrl        String?
+  sortOrder        Int              @default(0)
+  isActive         Boolean          @default(true)
+  startsAt         DateTime?
+  endsAt           DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  targetProduct  Product?  @relation("BannerProductTarget", fields: [targetProductId], references: [id], onDelete: SetNull)
+  targetCategory Category? @relation(fields: [targetCategoryId], references: [id], onDelete: SetNull)
+}
+
+model Coupon {
+  id        Int        @id @default(autoincrement())
+  code      String     @unique
+  type      CouponType
+  value     Decimal    @db.Decimal(10, 2)
+  isActive  Boolean    @default(true)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  maxUses   Int?
+  usedCount Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  products CouponProduct[]
+  orders   Order[]
+}
+
+model CouponProduct {
+  couponId   Int
+  productId  Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  coupon  Coupon  @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([couponId, productId])
+}
+
+model Cart {
+  id        Int      @id @default(autoincrement())
+  cartToken String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items CartItem[]
+}
+
+model CartItem {
+  id                Int      @id @default(autoincrement())
+  cartId            Int
+  productId         Int
+  variantId         Int
+  qty               Int
+  unitPriceSnapshot Decimal  @db.Decimal(10, 2)
+  addedAt           DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  cart    Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+}
+
+model Order {
+  id                  Int           @id @default(autoincrement())
+  orderNumber         String        @unique
+  customerName        String
+  customerPhone       String
+  customerEmail       String?
+  addressText         String        @db.Text
+  governorateId       Int
+  shippingFeeSnapshot Decimal       @db.Decimal(10, 2)
+  status              OrderStatus   @default(pending)
+  subtotal            Decimal       @db.Decimal(10, 2)
+  discountTotal       Decimal       @db.Decimal(10, 2)
+  total               Decimal       @db.Decimal(10, 2)
+  couponId            Int?
+  shippingProvider    String?
+  shippingCompany     String?
+  trackingNumber      String?
+  shippedAt           DateTime?
+  deliveredAt         DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  governorate   ShippingGovernorate @relation(fields: [governorateId], references: [id], onDelete: Restrict)
+  coupon        Coupon?             @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  items         OrderItem[]
+  statusLogs    OrderStatusLog[]
+  internalNotes OrderInternalNote[]
+}
+
+model OrderItem {
+  id                Int      @id @default(autoincrement())
+  orderId           Int
+  productId         Int
+  variantId         Int
+  productNameSnapshot String
+  colorSnapshot     String
+  sizeSnapshot      String
+  unitPriceSnapshot Decimal  @db.Decimal(10, 2)
+  qty               Int
+  lineTotal         Decimal  @db.Decimal(10, 2)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+}
+
+model AdminUser {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  username     String?   @unique
+  passwordHash String
+  role         AdminRole
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  statusLogs     OrderStatusLog[]
+  internalNotes  OrderInternalNote[]
+}
+
+model OrderStatusLog {
+  id         Int         @id @default(autoincrement())
+  orderId    Int
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+  note       String?     @db.Text
+  createdBy  Int?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  order Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  admin AdminUser? @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+}
+
+model OrderInternalNote {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  note      String   @db.Text
+  createdBy Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  admin AdminUser @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
+  <rect width="800" height="1000" fill="#f3f4f6"/>
+  <rect x="90" y="130" width="620" height="740" rx="24" fill="#111111"/>
+  <text x="400" y="500" text-anchor="middle" fill="#ffffff" font-family="Arial" font-size="52">GATY WEAR</text>
+  <text x="400" y="560" text-anchor="middle" fill="#f59e0b" font-family="Arial" font-size="30">STREETWEAR</text>
+</svg>

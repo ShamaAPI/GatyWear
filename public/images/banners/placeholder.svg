@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="700" viewBox="0 0 1600 700">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#111111"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="700" fill="url(#g)"/>
+  <text x="130" y="320" fill="#ffffff" font-family="Arial" font-size="96">GATY WEAR</text>
+  <text x="130" y="410" fill="#ffffff" font-family="Arial" font-size="42">PREMIUM STREETWEAR</text>
+</svg>

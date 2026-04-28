@@ -1,0 +1,35 @@
+{
+  "name": "gaty-wear",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:clean": "npm run clean && next dev",
+    "build": "next build",
+    "build:webpack": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint",
+    "clean": "powershell -Command \"if (Test-Path -LiteralPath '.next') { Remove-Item -LiteralPath '.next' -Recurse -Force -ErrorAction SilentlyContinue }; if (Test-Path -LiteralPath 'node_modules\\\\.cache') { Remove-Item -LiteralPath 'node_modules\\\\.cache' -Recurse -Force -ErrorAction SilentlyContinue }\"",
+    "reinstall": "npm run clean && powershell -Command \"if (Test-Path -LiteralPath 'node_modules') { Remove-Item -LiteralPath 'node_modules' -Recurse -Force -ErrorAction SilentlyContinue }\" && npm install",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.18.0",
+    "next": "16.2.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "prisma": "^6.18.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
