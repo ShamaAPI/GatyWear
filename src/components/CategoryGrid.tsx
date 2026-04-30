@@ -8,16 +8,16 @@ type CategoryGridProps = {
 export default function CategoryGrid({ categories }: CategoryGridProps) {
   return (
     <section>
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-lg font-bold text-primary">الفئات</h3>
-        <button type="button" className="text-sm font-medium text-amber-600">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-xl font-extrabold text-primary">الفئات</h3>
+        <button type="button" className="text-sm font-bold text-primary underline underline-offset-4">
           عرض الكل
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-4">
         {categories.map((category) => (
-          <article key={category.id} className="overflow-hidden rounded-2xl border border-black/10">
+          <article key={category.id} className="gw-card overflow-hidden">
             <div className="aspect-square">
               <SmartImage
                 src={category.image}
@@ -28,8 +28,8 @@ export default function CategoryGrid({ categories }: CategoryGridProps) {
                 className="h-full w-full object-cover"
               />
             </div>
-            <div className="bg-white p-3">
-              <h4 className="text-sm font-semibold text-primary">{category.name}</h4>
+            <div className="bg-white p-3.5">
+              <h4 className="text-sm font-bold text-primary">{category.name}</h4>
               <p className="mt-1 text-xs text-black/60">{category.itemCount} منتج</p>
             </div>
           </article>

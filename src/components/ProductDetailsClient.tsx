@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import ProductCard from "@/components/ProductCard";
@@ -8,6 +8,7 @@ import ProductStickyCta from "@/components/ProductStickyCta";
 import SmartImage from "@/components/SmartImage";
 import { useCart } from "@/context/CartContext";
 import type { Product } from "@/data/homeMock";
+import { trackGa, trackMeta } from "@/lib/analytics";
 
 type ProductDetailsClientProps = {
   product: Product;
@@ -49,6 +50,16 @@ export default function ProductDetailsClient({
   const hasValidSelection = Boolean(selectedColor && selectedSize);
   const isOutOfStock = hasValidSelection ? stock <= 0 : false;
 
+  useEffect(() => {
+    trackMeta("ViewContent", {
+      content_name: product.name,
+      content_ids: [product.id],
+      content_type: "product",
+      value: product.price,
+      currency: "EGP",
+    });
+  }, [product.id, product.name, product.price]);
+
   async function handleAddToCart() {
     if (!hasValidSelection) {
       setError("اختر اللون والمقاس أولًا");
@@ -61,8 +72,22 @@ export default function ProductDetailsClient({
 
     setError("");
     setIsAdding(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    addToCart(product, quantity, selectedColor, selectedSize);
+    const result = await addToCart(product, quantity, selectedColor, selectedSize);
+    if (!result.ok) {
+      setError(result.message ?? "تعذر إضافة المنتج");
+    } else {
+      trackMeta("AddToCart", {
+        content_name: product.name,
+        content_ids: [product.id],
+        value: product.price * quantity,
+        currency: "EGP",
+      });
+      trackGa("add_to_cart", {
+        currency: "EGP",
+        value: product.price * quantity,
+        items: [{ item_id: product.id, item_name: product.name, quantity }],
+      });
+    }
     setIsAdding(false);
   }
 
@@ -78,8 +103,18 @@ export default function ProductDetailsClient({
 
     setError("");
     setIsBuying(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    addToCart(product, quantity, selectedColor, selectedSize);
+    const result = await addToCart(product, quantity, selectedColor, selectedSize);
+    if (!result.ok) {
+      setError(result.message ?? "تعذر إضافة المنتج");
+      setIsBuying(false);
+      return;
+    }
+    trackMeta("AddToCart", {
+      content_name: product.name,
+      content_ids: [product.id],
+      value: product.price * quantity,
+      currency: "EGP",
+    });
     router.push("/checkout");
   }
 

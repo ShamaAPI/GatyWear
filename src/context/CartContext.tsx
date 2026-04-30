@@ -1,18 +1,35 @@
 ﻿"use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { allProducts, type Product } from "@/data/homeMock";
+import type { Product } from "@/data/homeMock";
 
-export type CartItem = {
+export type CartApiItem = {
+  id: number;
   productId: number;
+  variantId: number;
   quantity: number;
-  color: string;
-  size: string;
+  unitPrice: number;
+  lineTotal: number;
+  product: {
+    id: number;
+    slug: string;
+    name: string;
+    image: string;
+    imageFallback: string;
+  };
+  variant: {
+    id: number;
+    color: string;
+    size: string;
+    stock: number;
+    reserved: number;
+  };
 };
 
 type CouponState = {
   code: string;
   discount: number;
+  couponId?: number;
 };
 
 type MiniCartState = {
@@ -23,45 +40,49 @@ type MiniCartState = {
 };
 
 type CartContextValue = {
-  items: CartItem[];
+  items: CartApiItem[];
   itemCount: number;
   subtotal: number;
   discount: number;
   appliedCoupon: CouponState | null;
   miniCart: MiniCartState;
-  addToCart: (product: Product, quantity?: number, color?: string, size?: string) => void;
-  updateQuantity: (productId: number, quantity: number) => void;
-  removeItem: (productId: number) => void;
-  clearCart: () => void;
+  isCartLoading: boolean;
+  cartError: string;
+  refreshCart: () => Promise<void>;
+  addToCart: (product: Product, quantity?: number, color?: string, size?: string) => Promise<{ ok: boolean; message?: string }>;
+  updateQuantity: (itemId: number, quantity: number) => Promise<{ ok: boolean; message?: string }>;
+  removeItem: (itemId: number) => Promise<{ ok: boolean; message?: string }>;
+  clearCart: () => Promise<void>;
   applyCoupon: (code: string) => Promise<{ ok: boolean; message?: string }>;
   clearCoupon: () => void;
   closeMiniCart: () => void;
 };
 
-const CartContext = createContext<CartContextValue | null>(null);
-const CART_KEY = "gaty_cart_v1";
-
-const couponRules = {
-  SAVE10: { type: "percentage" as const, value: 10, eligibleProductIds: [1, 2, 3, 4, 5, 6] },
-  TSHIRT10: { type: "percentage" as const, value: 10, eligibleProductIds: [1, 5] },
+type CartApiResponse = {
+  ok: boolean;
+  message?: string;
+  data?: {
+    items: CartApiItem[];
+    summary: {
+      subtotal: number;
+      itemCount: number;
+    };
+  };
 };
 
-function getProduct(productId: number) {
-  return allProducts.find((item) => item.id === productId);
+const CartContext = createContext<CartContextValue | null>(null);
+
+async function fetchCartState(): Promise<CartApiResponse> {
+  const response = await fetch("/api/cart", { cache: "no-store" });
+  return response.json();
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(() => {
-    if (typeof window === "undefined") return [];
-    const stored = window.localStorage.getItem(CART_KEY);
-    if (!stored) return [];
-    try {
-      return JSON.parse(stored) as CartItem[];
-    } catch {
-      return [];
-    }
-  });
-
+  const [items, setItems] = useState<CartApiItem[]>([]);
+  const [serverSubtotal, setServerSubtotal] = useState(0);
+  const [serverItemCount, setServerItemCount] = useState(0);
+  const [isCartLoading, setIsCartLoading] = useState(true);
+  const [cartError, setCartError] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<CouponState | null>(null);
   const [miniCart, setMiniCart] = useState<MiniCartState>({
     open: false,
@@ -70,61 +91,118 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     subtotal: 0,
   });
 
-  useEffect(() => {
-    localStorage.setItem(CART_KEY, JSON.stringify(items));
-  }, [items]);
-
-  const subtotal = useMemo(
-    () =>
-      items.reduce((sum, item) => {
-        const product = getProduct(item.productId);
-        return sum + (product?.price ?? 0) * item.quantity;
-      }, 0),
-    [items],
-  );
-
+  const subtotal = useMemo(() => serverSubtotal, [serverSubtotal]);
+  const itemCount = useMemo(() => serverItemCount, [serverItemCount]);
   const discount = appliedCoupon?.discount ?? 0;
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  function addToCart(product: Product, quantity = 1, color?: string, size?: string) {
-    const variant = product.variants[0];
-    const nextColor = color ?? variant?.color ?? "Default";
-    const nextSize = size ?? variant?.size ?? "One Size";
-
-    setItems((current) => {
-      const existing = current.find((item) => item.productId === product.id);
-      if (existing) {
-        return current.map((item) =>
-          item.productId === product.id ? { ...item, quantity: item.quantity + quantity } : item,
-        );
+  async function refreshCart() {
+    try {
+      setIsCartLoading(true);
+      const result = await fetchCartState();
+      if (!result.ok || !result.data) {
+        setCartError(result.message ?? "تعذر تحميل السلة");
+        return;
       }
-      return [...current, { productId: product.id, quantity, color: nextColor, size: nextSize }];
-    });
-
-    setMiniCart({
-      open: true,
-      productName: product.name,
-      quantity,
-      subtotal: subtotal + product.price * quantity,
-    });
-  }
-
-  function updateQuantity(productId: number, quantity: number) {
-    if (quantity <= 0) {
-      removeItem(productId);
-      return;
+      setItems(result.data.items);
+      setServerSubtotal(result.data.summary.subtotal);
+      setServerItemCount(result.data.summary.itemCount);
+      setCartError("");
+    } catch {
+      setCartError("تعذر تحميل السلة");
+    } finally {
+      setIsCartLoading(false);
     }
-    setItems((current) =>
-      current.map((item) => (item.productId === productId ? { ...item, quantity } : item)),
-    );
   }
 
-  function removeItem(productId: number) {
-    setItems((current) => current.filter((item) => item.productId !== productId));
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void refreshCart();
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  async function addToCart(product: Product, quantity = 1, color?: string, size?: string) {
+    const variant = product.variants.find((entry) => entry.color === color && entry.size === size);
+
+    if (!variant?.id) {
+      return { ok: false, message: "اختر اللون والمقاس أولًا" };
+    }
+
+    try {
+      const response = await fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: product.id,
+          variantId: variant.id,
+          quantity,
+        }),
+      });
+
+      const result = (await response.json()) as CartApiResponse;
+      if (!result.ok || !result.data) {
+        return { ok: false, message: result.message ?? "تعذر إضافة المنتج" };
+      }
+
+      setItems(result.data.items);
+      setServerSubtotal(result.data.summary.subtotal);
+      setServerItemCount(result.data.summary.itemCount);
+      setCartError("");
+      setMiniCart({
+        open: true,
+        productName: product.name,
+        quantity,
+        subtotal: result.data.summary.subtotal,
+      });
+
+      return { ok: true };
+    } catch {
+      return { ok: false, message: "تعذر إضافة المنتج" };
+    }
   }
 
-  function clearCart() {
-    setItems([]);
+  async function updateQuantity(itemId: number, quantity: number) {
+    try {
+      const response = await fetch("/api/cart", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId, quantity }),
+      });
+
+      const result = (await response.json()) as CartApiResponse;
+      if (!result.ok || !result.data) {
+        return { ok: false, message: result.message ?? "تعذر تحديث السلة" };
+      }
+
+      setItems(result.data.items);
+      setServerSubtotal(result.data.summary.subtotal);
+      setServerItemCount(result.data.summary.itemCount);
+      return { ok: true };
+    } catch {
+      return { ok: false, message: "تعذر تحديث السلة" };
+    }
+  }
+
+  async function removeItem(itemId: number) {
+    try {
+      const response = await fetch(`/api/cart?itemId=${itemId}`, { method: "DELETE" });
+      const result = (await response.json()) as CartApiResponse;
+      if (!result.ok || !result.data) {
+        return { ok: false, message: result.message ?? "تعذر حذف المنتج" };
+      }
+
+      setItems(result.data.items);
+      setServerSubtotal(result.data.summary.subtotal);
+      setServerItemCount(result.data.summary.itemCount);
+      return { ok: true };
+    } catch {
+      return { ok: false, message: "تعذر حذف المنتج" };
+    }
+  }
+
+  async function clearCart() {
+    await Promise.all(items.map((item) => removeItem(item.id)));
     setAppliedCoupon(null);
   }
 
@@ -133,39 +211,36 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function applyCoupon(code: string): Promise<{ ok: boolean; message?: string }> {
-    await new Promise((resolve) => setTimeout(resolve, 700));
-    const normalized = code.trim().toUpperCase();
+    try {
+      const response = await fetch("/api/coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          items: items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+          })),
+        }),
+      });
 
-    if (!normalized || normalized === "WRONG") {
+      const result = await response.json();
+      if (!result.ok) {
+        setAppliedCoupon(null);
+        return { ok: false, message: result.message ?? "كود غير صحيح" };
+      }
+
+      setAppliedCoupon({
+        code: result.data.code,
+        discount: result.data.discount,
+        couponId: result.data.couponId,
+      });
+      return { ok: true };
+    } catch {
       setAppliedCoupon(null);
-      return { ok: false, message: "كود غير صحيح" };
+      return { ok: false, message: "تعذر تطبيق الكوبون" };
     }
-
-    if (normalized === "EXPIRED") {
-      setAppliedCoupon(null);
-      return { ok: false, message: "الكوبون منتهي" };
-    }
-
-    const rule = couponRules[normalized as keyof typeof couponRules];
-    if (!rule) {
-      setAppliedCoupon(null);
-      return { ok: false, message: "كود غير صحيح" };
-    }
-
-    const eligibleSubtotal = items.reduce((sum, item) => {
-      if (!rule.eligibleProductIds.includes(item.productId)) return sum;
-      const product = getProduct(item.productId);
-      return sum + (product?.price ?? 0) * item.quantity;
-    }, 0);
-
-    if (eligibleSubtotal <= 0) {
-      setAppliedCoupon(null);
-      return { ok: false, message: "لا ينطبق على المنتجات" };
-    }
-
-    const amount = rule.type === "percentage" ? Math.round(eligibleSubtotal * (rule.value / 100)) : rule.value;
-    setAppliedCoupon({ code: normalized, discount: amount });
-    return { ok: true };
   }
 
   function closeMiniCart() {
@@ -187,6 +262,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     discount,
     appliedCoupon,
     miniCart,
+    isCartLoading,
+    cartError,
+    refreshCart,
     addToCart,
     updateQuantity,
     removeItem,

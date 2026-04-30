@@ -20,16 +20,32 @@ export default function AdminLoginPage() {
     }
 
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 700));
-    localStorage.setItem("isAdmin", "true");
-    router.replace("/admin");
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const result = await response.json();
+
+      if (!result.ok) {
+        setError(result.message ?? "فشل تسجيل الدخول");
+        setLoading(false);
+        return;
+      }
+
+      router.replace("/admin");
+    } catch {
+      setError("تعذر تسجيل الدخول الآن");
+      setLoading(false);
+    }
   }
 
   return (
     <div className="mx-auto w-full max-w-md px-4 py-12">
       <section className="rounded-2xl border border-black/10 bg-white p-6">
         <h1 className="text-center text-xl font-bold text-primary">تسجيل دخول الإدارة</h1>
-        <p className="mt-1 text-center text-sm text-black/60">نسخة تجريبية (Mock UI)</p>
+        <p className="mt-1 text-center text-sm text-black/60">استخدم حساب الأدمن أو الموظف</p>
 
         <form onSubmit={handleLogin} className="mt-5 space-y-3">
           <input
@@ -59,3 +75,4 @@ export default function AdminLoginPage() {
     </div>
   );
 }
+

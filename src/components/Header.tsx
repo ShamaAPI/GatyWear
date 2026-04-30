@@ -7,23 +7,23 @@ export default function Header() {
   const { itemCount } = useCart();
 
   return (
-    <header className="sticky top-0 z-30 border-b border-black/10 bg-white/95 px-4 py-4 backdrop-blur">
-      <div className="flex items-center justify-between">
+    <header className="sticky top-0 z-30 border-b border-black/5 bg-background/95 px-5 py-4 backdrop-blur">
+      <div className="gw-container flex items-center justify-between px-0">
         <button
           type="button"
           aria-label="القائمة"
-          className="rounded-md border border-black/15 px-3 py-1.5 text-sm font-medium text-primary"
+          className="rounded-lg border border-black/10 bg-white px-3 py-2 text-sm font-medium text-primary"
         >
           القائمة
         </button>
         <div className="text-center">
-          <p className="text-xs tracking-[0.2em] text-amber-500">GATY WEAR</p>
-          <h1 className="text-base font-semibold text-primary">جاتي وير</h1>
+          <p className="text-xs font-semibold tracking-[0.2em] text-accent">GATY WEAR</p>
+          <h1 className="text-base font-extrabold text-primary">جاتي وير</h1>
         </div>
         <Link
           href="/cart"
           aria-label="السلة"
-          className="relative rounded-md border border-black/15 px-3 py-1.5 text-sm font-medium text-primary"
+          className="relative rounded-lg border border-black/10 bg-white px-3 py-2 text-sm font-medium text-primary"
         >
           السلة
           {itemCount > 0 ? (

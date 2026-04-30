@@ -270,3 +270,16 @@ model OrderInternalNote {
   order Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
   admin AdminUser @relation(fields: [createdBy], references: [id], onDelete: Restrict)
 }
+
+model Integration {
+  id                Int      @id @default(autoincrement())
+  googleTagManagerId String? @map("google_tag_manager_id")
+  googleAnalyticsId  String? @map("google_analytics_id")
+  googleAdsId        String? @map("google_ads_id")
+  facebookPixelId    String? @map("facebook_pixel_id")
+  shippoApiKey       String? @map("shippo_api_key")
+  hotjarTrackingCode String? @map("hotjar_tracking_code")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("integrations")
+}

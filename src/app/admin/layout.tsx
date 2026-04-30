@@ -1,5 +1,5 @@
-import AdminRouteGuard from "@/components/admin/AdminRouteGuard";
+export const dynamic = "force-dynamic";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <AdminRouteGuard>{children}</AdminRouteGuard>;
+  return <>{children}</>;
 }

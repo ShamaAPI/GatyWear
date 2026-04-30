@@ -25,7 +25,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   }
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-black/10 bg-white">
+    <article className="gw-card overflow-hidden">
       <Link href={`/product/${product.slug}`} className="block aspect-[4/5] bg-zinc-100">
         <SmartImage
           src={product.image}
@@ -36,15 +36,15 @@ export default function ProductCard({ product }: ProductCardProps) {
           className="h-full w-full object-cover"
         />
       </Link>
-      <div className="space-y-2 p-3">
-        <h4 className="line-clamp-2 text-sm font-semibold text-primary">{product.name}</h4>
-        <p className="text-sm font-bold text-primary">{product.price} EGP</p>
+      <div className="space-y-2.5 p-3.5">
+        <h4 className="line-clamp-2 text-sm font-bold text-primary">{product.name}</h4>
+        <p className="text-base font-extrabold text-primary">{product.price} جنيه</p>
         {isOutOfStock ? <p className="text-xs text-red-600">غير متاح</p> : null}
         <button
           type="button"
           onClick={handleAdd}
           disabled={isAdding || isOutOfStock}
-          className="block w-full rounded-lg bg-primary px-3 py-2 text-center text-xs font-semibold text-white disabled:opacity-50"
+          className="block w-full rounded-lg bg-accent px-3 py-2.5 text-center text-sm font-extrabold text-black disabled:opacity-50"
         >
           {isAdding ? "جاري الإضافة..." : "أضف للسلة"}
         </button>
@@ -52,3 +52,4 @@ export default function ProductCard({ product }: ProductCardProps) {
     </article>
   );
 }
+

@@ -23,6 +23,10 @@
 # misc
 .DS_Store
 *.pem
+*.zip
+_design_ref/
+qa_*.txt
+qa_*.json
 
 # debug
 npm-debug.log*

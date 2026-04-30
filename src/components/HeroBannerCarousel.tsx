@@ -19,27 +19,27 @@ export default function HeroBannerCarousel({ banners }: HeroBannerCarouselProps)
   }, [banners.length]);
 
   return (
-    <section className="relative overflow-hidden rounded-2xl">
+    <section className="gw-card relative overflow-hidden">
       {banners.map((banner, index) => (
         <article
           key={banner.id}
           className={`${
             index === activeIndex ? "opacity-100" : "pointer-events-none opacity-0"
-          } absolute inset-0 bg-gradient-to-l ${banner.background} p-6 text-white transition-opacity duration-500`}
+          } absolute inset-0 bg-gradient-to-l ${banner.background} p-7 text-white transition-opacity duration-500`}
         >
-          <p className="text-xs text-amber-200">GATY WEAR</p>
-          <h2 className="mt-2 text-2xl font-bold leading-tight">{banner.title}</h2>
-          <p className="mt-2 text-sm text-zinc-200">{banner.subtitle}</p>
+          <p className="text-xs font-medium tracking-[0.2em] text-amber-200">GATY WEAR</p>
+          <h2 className="mt-3 text-3xl font-extrabold leading-tight">{banner.title}</h2>
+          <p className="mt-2 text-sm text-zinc-100/90">{banner.subtitle}</p>
           <button
             type="button"
-            className="mt-4 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-black"
+            className="mt-5 rounded-lg bg-accent px-5 py-2.5 text-sm font-extrabold text-black"
           >
             {banner.cta}
           </button>
         </article>
       ))}
 
-      <div className="relative h-52" />
+      <div className="relative h-64" />
 
       <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-1.5">
         {banners.map((banner, index) => (

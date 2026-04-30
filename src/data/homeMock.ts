@@ -16,6 +16,7 @@ export type Category = {
 };
 
 export type ProductVariant = {
+  id?: number;
   color: string;
   size: string;
   stock: number;

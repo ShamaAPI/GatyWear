@@ -43,6 +43,9 @@ Copy `.env.example` to `.env` and update the database credentials:
 
 ```bash
 DATABASE_URL="mysql://USER:PASSWORD@localhost:3306/gaty_wear"
+AUTH_SESSION_SECRET="replace_with_long_random_secret"
+NEXT_PUBLIC_META_PIXEL_ID=""
+NEXT_PUBLIC_GA_ID=""
 ```
 
 ### 2) Generate Prisma client
@@ -77,3 +80,18 @@ Placeholder routes are available under:
 - `/api/admin/coupons`
 - `/api/admin/shipping`
 - `/api/admin/banners`
+
+## Production auth notes
+
+- Admin authentication uses `bcrypt` hashes (`bcryptjs`) stored in `admin_users.password_hash`.
+- Session cookie key: `gw_admin_session` (HttpOnly, SameSite=Lax, Secure in production).
+- Seed first admin user:
+
+```bash
+ADMIN_EMAIL="admin@example.com" ADMIN_PASSWORD="StrongPass123!" ADMIN_ROLE="admin" npm run seed:admin
+```
+- Create a hashed password example:
+
+```bash
+node -e "const b=require('bcryptjs'); console.log(b.hashSync('YOUR_PASSWORD', 12));"
+```

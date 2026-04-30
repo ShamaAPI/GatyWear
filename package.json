@@ -13,23 +13,26 @@
     "reinstall": "npm run clean && powershell -Command \"if (Test-Path -LiteralPath 'node_modules') { Remove-Item -LiteralPath 'node_modules' -Recurse -Force -ErrorAction SilentlyContinue }\" && npm install",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
-    "prisma:migrate:deploy": "prisma migrate deploy"
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "seed:admin": "node scripts/seed-admin.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.18.0",
+    "bcryptjs": "^3.0.3",
     "next": "16.2.4",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "autoprefixer": "^10.4.21",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "postcss": "^8.5.6",
     "prisma": "^6.18.0",
-    "tailwindcss": "^4",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5"
   }
 }
