@@ -5,34 +5,37 @@
   "scripts": {
     "dev": "next dev",
     "dev:clean": "npm run clean && next dev",
-    "build": "next build",
+    "build": "prisma generate && next build --webpack",
     "build:webpack": "next build --webpack",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint .",
     "clean": "powershell -Command \"if (Test-Path -LiteralPath '.next') { Remove-Item -LiteralPath '.next' -Recurse -Force -ErrorAction SilentlyContinue }; if (Test-Path -LiteralPath 'node_modules\\\\.cache') { Remove-Item -LiteralPath 'node_modules\\\\.cache' -Recurse -Force -ErrorAction SilentlyContinue }\"",
     "reinstall": "npm run clean && powershell -Command \"if (Test-Path -LiteralPath 'node_modules') { Remove-Item -LiteralPath 'node_modules' -Recurse -Force -ErrorAction SilentlyContinue }\" && npm install",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "seed:admin": "node scripts/seed-admin.mjs"
   },
   "dependencies": {
-    "@prisma/client": "^6.18.0",
-    "bcryptjs": "^3.0.3",
-    "next": "16.2.4",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
-  },
-  "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@prisma/client": "^6.18.0",
     "autoprefixer": "^10.4.21",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.4",
+    "bcryptjs": "^3.0.3",
+    "next": "16.2.4",
     "postcss": "^8.5.6",
     "prisma": "^6.18.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
+  },
+  "devDependencies": {
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4"
   }
 }
