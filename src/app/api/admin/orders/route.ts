@@ -1,5 +1,11 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { OrderStatus } from "@prisma/client";
+import {
+  buildPatchedMockOrder,
+  getMockOrderDetails,
+  getMockOrderList,
+  isDatabaseUnavailable,
+} from "@/lib/dbFallback";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/adminGuard";
 
@@ -7,11 +13,11 @@ export async function GET(request: Request) {
   const auth = await requireAdminSession();
   if (!auth.ok) return auth.response;
 
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-    const status = searchParams.get("status") as OrderStatus | null;
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+  const status = searchParams.get("status") as OrderStatus | null;
 
+  try {
     if (id) {
       const order = await prisma.order.findUnique({ where: { id: Number(id) }, include: { governorate: true, items: true, internalNotes: { orderBy: { createdAt: "desc" } }, statusLogs: { orderBy: { createdAt: "asc" } } } });
       if (!order) return NextResponse.json({ ok: false, message: "Order not found" }, { status: 404 });
@@ -22,6 +28,16 @@ export async function GET(request: Request) {
     const orders = await prisma.order.findMany({ where: status ? { status } : undefined, orderBy: { createdAt: "desc" } });
     return NextResponse.json({ ok: true, data: orders.map((order) => ({ ...order, subtotal: Number(order.subtotal), discountTotal: Number(order.discountTotal), shippingFeeSnapshot: Number(order.shippingFeeSnapshot), total: Number(order.total) })) });
   } catch (error) {
+    if (isDatabaseUnavailable(error)) {
+      if (id) {
+        const order = getMockOrderDetails(Number(id));
+        if (!order) return NextResponse.json({ ok: false, message: "Order not found" }, { status: 404 });
+        return NextResponse.json({ ok: true, data: order, fallback: true });
+      }
+
+      return NextResponse.json({ ok: true, data: getMockOrderList(status ?? undefined), fallback: true });
+    }
+
     return NextResponse.json({ ok: false, message: "Failed to fetch orders", error: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
 }
@@ -30,8 +46,9 @@ export async function PATCH(request: Request) {
   const auth = await requireAdminSession(["admin", "staff"]);
   if (!auth.ok) return auth.response;
 
+  const body = (await request.json()) as { id: number; status: OrderStatus; shippingCompany?: string; trackingNumber?: string; note?: string };
+
   try {
-    const body = (await request.json()) as { id: number; status: OrderStatus; shippingCompany?: string; trackingNumber?: string; note?: string };
     if (!body.id || !body.status) return NextResponse.json({ ok: false, message: "Invalid payload" }, { status: 400 });
 
     const result = await prisma.$transaction(async (tx) => {
@@ -48,6 +65,12 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ ok: true, data: result });
   } catch (error) {
+    if (isDatabaseUnavailable(error)) {
+      const patched = buildPatchedMockOrder(getMockOrderDetails(body.id), body.status);
+      if (!patched) return NextResponse.json({ ok: false, message: "Order not found" }, { status: 404 });
+      return NextResponse.json({ ok: true, data: patched, fallback: true });
+    }
+
     const message = error instanceof Error ? error.message : "Unknown";
     if (message === "ORDER_NOT_FOUND") return NextResponse.json({ ok: false, message: "Order not found" }, { status: 404 });
     if (message === "INVALID_FLOW") return NextResponse.json({ ok: false, message: "Invalid status transition" }, { status: 400 });

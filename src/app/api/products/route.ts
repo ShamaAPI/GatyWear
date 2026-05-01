@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getMockProducts, isDatabaseUnavailable } from "@/lib/dbFallback";
 
 type ProductQuery = {
   slug?: string;
@@ -87,6 +88,38 @@ export async function GET(request: Request) {
       data: products.map(toFrontendProduct),
     });
   } catch (error) {
+    if (isDatabaseUnavailable(error)) {
+      const products = getMockProducts()
+        .filter((product) => !query.slug || product.slug === query.slug)
+        .filter((product) => !query.categorySlug || product.category.slug === query.categorySlug)
+        .filter(
+          (product) =>
+            !query.q ||
+            product.name.includes(query.q) ||
+            product.category.name.includes(query.q),
+        )
+        .map((product) => ({
+          id: product.id,
+          slug: product.slug,
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          category: product.category,
+          images: product.images,
+          variants: product.variants,
+          image: product.images[0]?.imageUrl ?? "/images/products/placeholder.svg",
+          imageFallback: "/images/products/placeholder.svg",
+          gallery: product.images.length
+            ? product.images.sort((first, second) => first.sortOrder - second.sortOrder).map((image) => image.imageUrl)
+            : ["/images/products/placeholder.svg"],
+          galleryFallbacks: product.images.length
+            ? product.images.map(() => "/images/products/placeholder.svg")
+            : ["/images/products/placeholder.svg"],
+        }));
+
+      return NextResponse.json({ ok: true, data: products, fallback: true });
+    }
+
     return NextResponse.json(
       {
         ok: false,

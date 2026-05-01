@@ -1,4 +1,5 @@
 ﻿import { NextResponse } from "next/server";
+import { getMockGovernorates, isDatabaseUnavailable } from "@/lib/dbFallback";
 import { prisma } from "@/lib/prisma";
 import { getCartToken } from "@/lib/cartService";
 
@@ -32,6 +33,10 @@ export async function GET() {
       })),
     });
   } catch (error) {
+    if (isDatabaseUnavailable(error)) {
+      return NextResponse.json({ ok: true, data: getMockGovernorates(), fallback: true });
+    }
+
     return NextResponse.json(
       {
         ok: false,

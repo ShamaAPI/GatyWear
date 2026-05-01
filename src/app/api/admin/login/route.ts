@@ -2,6 +2,11 @@ import { compare } from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
+  getEmergencyAdminSession,
+  isDatabaseUnavailable,
+  isEmergencyAdminLogin,
+} from "@/lib/dbFallback";
+import {
   ADMIN_SESSION_COOKIE_NAME,
   createSessionToken,
   getSessionCookieOptions,
@@ -20,10 +25,13 @@ function getClientIp(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let email = "";
+  let password = "";
+
   try {
     const body = (await request.json()) as LoginPayload;
-    const email = body.email?.trim().toLowerCase();
-    const password = body.password ?? "";
+    email = body.email?.trim().toLowerCase() ?? "";
+    password = body.password ?? "";
 
     if (!email || !password) {
       return NextResponse.json({ ok: false, message: "يرجى إدخال البريد وكلمة المرور" }, { status: 400 });
@@ -64,6 +72,21 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
+    if (isDatabaseUnavailable(error) && email && password && isEmergencyAdminLogin(email, password)) {
+      const fallbackUser = getEmergencyAdminSession();
+      const response = NextResponse.json({
+        ok: true,
+        data: fallbackUser,
+        fallback: true,
+      });
+      response.cookies.set(
+        ADMIN_SESSION_COOKIE_NAME,
+        createSessionToken(fallbackUser.id, fallbackUser.role),
+        getSessionCookieOptions(),
+      );
+      return response;
+    }
+
     return NextResponse.json(
       {
         ok: false,

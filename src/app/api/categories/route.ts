@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getMockCategories, isDatabaseUnavailable } from "@/lib/dbFallback";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -35,6 +36,24 @@ export async function GET(request: Request) {
       })),
     });
   } catch (error) {
+    if (isDatabaseUnavailable(error)) {
+      const categories = getMockCategories()
+        .filter((category) => !slug || category.slug === slug)
+        .map((category) => ({
+          id: category.id,
+          slug: category.slug,
+          name: category.name,
+          description: category.description,
+          image: category.imageUrl ?? "/images/categories/placeholder.svg",
+          imageFallback: "/images/categories/placeholder.svg",
+          isActive: category.isActive,
+          sortOrder: category.sortOrder,
+          productsCount: category.productsCount,
+        }));
+
+      return NextResponse.json({ ok: true, data: categories, fallback: true });
+    }
+
     return NextResponse.json(
       {
         ok: false,

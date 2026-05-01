@@ -1,18 +1,43 @@
-﻿import AdminShell from "@/components/admin/AdminShell";
+import AdminShell from "@/components/admin/AdminShell";
+import { getMockDashboardData, isDatabaseUnavailable } from "@/lib/dbFallback";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminDashboardPage() {
-  const deliveredAgg = await prisma.order.aggregate({ where: { status: "delivered" }, _sum: { total: true }, _count: { id: true } });
-  const ordersByStatusRows = await prisma.order.groupBy({ by: ["status"], _count: { id: true } });
-  const lowStock = await prisma.productVariant.findMany({ where: { stockQty: { lte: 5 }, isActive: true }, include: { product: true }, orderBy: { stockQty: "asc" }, take: 10 });
-  const bestSellers = await prisma.orderItem.groupBy({ by: ["productId", "productNameSnapshot"], _sum: { qty: true }, orderBy: { _sum: { qty: "desc" } }, take: 5 });
+  let deliveredSales = 0;
+  let aov = 0;
+  let ordersByStatus = { pending: 0, processing: 0, shipped: 0, delivered: 0, canceled: 0 };
+  let lowStock: Array<{ id: number; product: { name: string }; color: string; size: string; stockQty: number }> = [];
+  let bestSellers: Array<{ productId: number; productNameSnapshot: string; _sum: { qty: number | null } }> = [];
 
-  const ordersByStatus = { pending: 0, processing: 0, shipped: 0, delivered: 0, canceled: 0 };
-  for (const row of ordersByStatusRows) ordersByStatus[row.status] = row._count.id;
+  try {
+    const deliveredAgg = await prisma.order.aggregate({ where: { status: "delivered" }, _sum: { total: true }, _count: { id: true } });
+    const ordersByStatusRows = await prisma.order.groupBy({ by: ["status"], _count: { id: true } });
+    lowStock = await prisma.productVariant.findMany({ where: { stockQty: { lte: 5 }, isActive: true }, include: { product: true }, orderBy: { stockQty: "asc" }, take: 10 });
+    const dbBestSellers = await prisma.orderItem.groupBy({ by: ["productId", "productNameSnapshot"], _sum: { qty: true }, orderBy: { _sum: { qty: "desc" } }, take: 5 });
+    bestSellers = dbBestSellers.map((item) => ({
+      productId: item.productId,
+      productNameSnapshot: item.productNameSnapshot,
+      _sum: { qty: item._sum.qty },
+    }));
 
-  const deliveredSales = Number(deliveredAgg._sum.total ?? 0);
-  const deliveredCount = deliveredAgg._count.id;
-  const aov = deliveredCount ? Math.round(deliveredSales / deliveredCount) : 0;
+    for (const row of ordersByStatusRows) ordersByStatus[row.status] = row._count.id;
+
+    deliveredSales = Number(deliveredAgg._sum.total ?? 0);
+    const deliveredCount = deliveredAgg._count.id;
+    aov = deliveredCount ? Math.round(deliveredSales / deliveredCount) : 0;
+  } catch (error) {
+    if (!isDatabaseUnavailable(error)) throw error;
+    const fallback = getMockDashboardData();
+    deliveredSales = fallback.deliveredSales;
+    aov = fallback.aov;
+    ordersByStatus = fallback.ordersByStatus;
+    lowStock = fallback.lowStock;
+    bestSellers = fallback.bestSellers.map((item, index) => ({
+      productId: index + 1,
+      productNameSnapshot: item.name,
+      _sum: { qty: item.qty },
+    }));
+  }
 
   return (
     <AdminShell title="لوحة التحكم" subtitle="ملخص الأداء والمبيعات">

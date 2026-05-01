@@ -1,8 +1,16 @@
-﻿import AdminShell from "@/components/admin/AdminShell";
+import AdminShell from "@/components/admin/AdminShell";
+import { getMockInventoryRows, isDatabaseUnavailable } from "@/lib/dbFallback";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminInventoryPage() {
-  const variants = await prisma.productVariant.findMany({ include: { product: true }, orderBy: { updatedAt: "desc" } });
+  let variants: Array<{ id: number; product: { name: string; slug: string }; sku: string | null; color: string; size: string; stockQty: number }> = [];
+
+  try {
+    variants = await prisma.productVariant.findMany({ include: { product: true }, orderBy: { updatedAt: "desc" } });
+  } catch (error) {
+    if (!isDatabaseUnavailable(error)) throw error;
+    variants = getMockInventoryRows();
+  }
 
   return (
     <AdminShell title="المخزون" subtitle="متابعة الكميات لكل متغير">

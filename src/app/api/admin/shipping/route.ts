@@ -1,4 +1,5 @@
 ﻿import { NextResponse } from "next/server";
+import { getMockShippingRows, isDatabaseUnavailable } from "@/lib/dbFallback";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/adminGuard";
 
@@ -8,8 +9,16 @@ export async function GET() {
   const auth = await requireAdminSession();
   if (!auth.ok) return auth.response;
 
-  const rows = await prisma.shippingGovernorate.findMany({ orderBy: { name: "asc" } });
-  return NextResponse.json({ ok: true, data: rows.map((item) => ({ ...item, fee: Number(item.fee) })) });
+  try {
+    const rows = await prisma.shippingGovernorate.findMany({ orderBy: { name: "asc" } });
+    return NextResponse.json({ ok: true, data: rows.map((item) => ({ ...item, fee: Number(item.fee) })) });
+  } catch (error) {
+    if (isDatabaseUnavailable(error)) {
+      return NextResponse.json({ ok: true, data: getMockShippingRows(), fallback: true });
+    }
+
+    return NextResponse.json({ ok: false, message: "Failed to fetch governorates", error: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {

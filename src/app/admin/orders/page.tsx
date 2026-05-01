@@ -1,5 +1,6 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
+import { getMockOrderList, isDatabaseUnavailable } from "@/lib/dbFallback";
 import { prisma } from "@/lib/prisma";
 
 const tabs = [
@@ -14,7 +15,20 @@ type StatusKey = (typeof tabs)[number]["key"];
 
 export default async function AdminOrdersPage({ searchParams }: { searchParams: Promise<{ status?: StatusKey }> }) {
   const { status = "pending" } = await searchParams;
-  const filtered = await prisma.order.findMany({ where: { status }, orderBy: { createdAt: "desc" } });
+  let filtered: Array<{ id: number; customerName: string; status: string; total: number }> = [];
+
+  try {
+    const orders = await prisma.order.findMany({ where: { status }, orderBy: { createdAt: "desc" } });
+    filtered = orders.map((order) => ({
+      id: order.id,
+      customerName: order.customerName,
+      status: order.status,
+      total: Number(order.total),
+    }));
+  } catch (error) {
+    if (!isDatabaseUnavailable(error)) throw error;
+    filtered = getMockOrderList(status);
+  }
 
   return (
     <AdminShell title="الطلبات" subtitle="إدارة ومتابعة جميع الطلبات">

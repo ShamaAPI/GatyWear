@@ -1,4 +1,5 @@
 ﻿import { NextResponse } from "next/server";
+import { getMockAdminCategories, isDatabaseUnavailable } from "@/lib/dbFallback";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/adminGuard";
 
@@ -8,8 +9,16 @@ export async function GET() {
   const auth = await requireAdminSession();
   if (!auth.ok) return auth.response;
 
-  const categories = await prisma.category.findMany({ include: { _count: { select: { products: true } } }, orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }] });
-  return NextResponse.json({ ok: true, data: categories.map((category) => ({ ...category, productsCount: category._count.products })) });
+  try {
+    const categories = await prisma.category.findMany({ include: { _count: { select: { products: true } } }, orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }] });
+    return NextResponse.json({ ok: true, data: categories.map((category) => ({ ...category, productsCount: category._count.products })) });
+  } catch (error) {
+    if (isDatabaseUnavailable(error)) {
+      return NextResponse.json({ ok: true, data: getMockAdminCategories(), fallback: true });
+    }
+
+    return NextResponse.json({ ok: false, message: "Failed to fetch categories", error: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
